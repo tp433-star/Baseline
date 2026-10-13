@@ -1,0 +1,233 @@
+<meta charset="utf-8">
+<title>Baseline Drift Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a mapping ledger. Site rail, then the field x site matrix, then the decision log. */
+:root {
+  --bg: #f5f7f8; --panel: #ffffff; --fg: #15232b; --muted: #5b6c75; --line: #d6dfe3;
+  --accent: #0b7a75; --accent-soft: #cfe9e6;
+  --p-library: #0b7a75; --p-library-bg: #dcefec;
+  --p-inferred: #3f6c9c; --p-inferred-bg: #e1eaf4;
+  --p-human: #a35f00; --p-human-bg: #f7ead2;
+  --p-open: #b3261e; --p-open-bg: #f8dedb;
+  --p-missing: #7d8a90; --p-missing-bg: #eceff1;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Serif 4", Georgia, serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f171b; --panel: #152127; --fg: #e3ecef; --muted: #93a6ae; --line: #26363d;
+  --accent: #4fc7bf; --accent-soft: #173c3a;
+  --p-library: #4fc7bf; --p-library-bg: #143633;
+  --p-inferred: #8cb4e0; --p-inferred-bg: #1a2a3b;
+  --p-human: #f0b65a; --p-human-bg: #3a2b12;
+  --p-open: #ff8a80; --p-open-bg: #3d1a18;
+  --p-missing: #8a979d; --p-missing-bg: #1d272c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f171b; --panel: #152127; --fg: #e3ecef; --muted: #93a6ae; --line: #26363d;
+  --accent: #4fc7bf; --accent-soft: #173c3a;
+  --p-library: #4fc7bf; --p-library-bg: #143633;
+  --p-inferred: #8cb4e0; --p-inferred-bg: #1a2a3b;
+  --p-human: #f0b65a; --p-human-bg: #3a2b12;
+  --p-open: #ff8a80; --p-open-bg: #3d1a18;
+  --p-missing: #8a979d; --p-missing-bg: #1d272c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 16px/1.55 var(--body); margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+h2 { font-size: 1.25rem; font-weight: 800; }
+.eyebrow { font: 600 0.72rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.lede { max-width: 64ch; color: var(--muted); margin: 0; }
+.top { display: grid; gap: 14px; }
+.stats { display: flex; flex-wrap: wrap; gap: 28px; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.stats div { display: grid; gap: 2px; }
+.stats b { font: 800 1.9rem/1 var(--display); color: var(--fg); }
+.stats span { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.section { display: grid; gap: 14px; min-width: 0; }
+.section > p { margin: 0; color: var(--muted); max-width: 70ch; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child th, tr:last-child td { border-bottom: 0; }
+.code { font: 600 0.72rem/1 var(--mono); background: var(--fg); color: var(--bg); padding: 3px 6px; border-radius: 3px; letter-spacing: 0.04em; }
+.sites th { font: 600 0.95rem var(--display); white-space: nowrap; }
+.barcell { width: 55%; }
+.bar { display: flex; height: 12px; border-radius: 2px; overflow: hidden; background: var(--line); gap: 2px; }
+.seg.p-library { background: var(--p-library); } .seg.p-inferred { background: var(--p-inferred); }
+.seg.p-human { background: var(--p-human); } .seg.p-open { background: var(--p-open); }
+.seg.p-missing { background: var(--p-missing); }
+.num { font: 600 0.95rem var(--mono); text-align: right; }
+.day1 { color: var(--muted); font-weight: 400; }
+.sites thead th { font: 600 0.7rem var(--mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.pill { font: 600 0.72rem var(--mono); padding: 4px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--p-library-bg); color: var(--p-library); }
+.pill.ready { background: var(--p-inferred-bg); color: var(--p-inferred); }
+.pill.todo { background: var(--p-open-bg); color: var(--p-open); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font: 0.8rem var(--mono); color: var(--muted); padding: 0; margin: 0; list-style: none; }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.matrix { min-width: 860px; }
+.matrix thead th { font-weight: 400; text-align: center; }
+.matrix tbody th { width: 220px; }
+.fname { display: block; font: 600 0.85rem var(--mono); }
+.fdesc { display: block; font-size: 0.78rem; color: var(--muted); line-height: 1.3; }
+.cell { font: 0.78rem/1.25 var(--mono); text-align: center; border-left: 1px solid var(--line); }
+.cell .src { display: block; word-break: break-word; }
+.cell .note { display: block; font-size: 0.7rem; opacity: 0.85; margin-top: 2px; }
+.cell.p-library { background: var(--p-library-bg); color: var(--p-library); }
+.cell.p-inferred { background: var(--p-inferred-bg); color: var(--p-inferred); }
+.cell.p-human { background: var(--p-human-bg); color: var(--p-human); font-weight: 600; }
+.cell.p-open { background: var(--p-open-bg); color: var(--p-open); font-weight: 600; }
+.cell.p-missing { background: var(--p-missing-bg); color: var(--p-missing); }
+.extra { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 6px; font-size: 0.92rem; }
+.extra code { font: 0.85rem var(--mono); }
+.flags { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.flag { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.flag.open { border-color: var(--p-open); }
+.flag header { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.flag h3 { font-size: 1rem; font-weight: 600; flex: 1; min-width: 12ch; }
+.kind { font: 0.7rem var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.evidence { margin: 0; font-size: 0.88rem; color: var(--muted); overflow-wrap: anywhere; }
+.decided { margin: 0; font-size: 0.9rem; display: grid; gap: 4px; }
+.decided.pending { color: var(--p-open); }
+.who { font: 0.75rem var(--mono); color: var(--p-human); }
+.muted { color: var(--muted); }
+.learned { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+footer { font: 0.78rem var(--mono); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+@media (max-width: 640px) { .barcell { width: auto; min-width: 90px; } }
+</style>
+<div class="wrap">
+  <section class="top">
+    <span class="eyebrow">Baseline · ERP to CRM order sync</span>
+    <h1>One ERP. 6 setups. One order schema.</h1>
+    <p class="lede">Every site runs the same SAP, and every export looks different. Plain rules map each site to the CRM order and flag what only a person should decide. Each approved site teaches the library, so the next one starts further ahead.</p>
+    <div class="stats">
+      <div><b>94%</b><span>field mappings reused</span></div>
+      <div><b>4</b><span>decisions signed off</span></div>
+      <div><b>3</b><span>still need a person</span></div>
+      <div><b>50</b><span>patterns in library</span></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Sites</h2>
+    <ul class="legend">
+      <li><i style="background:var(--p-library)"></i>Reused from library</li>
+      <li><i style="background:var(--p-inferred)"></i>Matched on data</li>
+      <li><i style="background:var(--p-human)"></i>Human decision</li>
+      <li><i style="background:var(--p-open)"></i>Needs a decision</li>
+      <li><i style="background:var(--p-missing)"></i>Missing</li>
+    </ul>
+    <div class="scroll"><table class="sites"><thead><tr><th scope="col">Site</th><th scope="col">Where each field comes from now</th><th scope="col" class="num">Day one</th><th scope="col" class="num">Now</th><th scope="col">State</th></tr></thead><tbody>
+      <tr>
+        <th scope="row"><span class="code">AHM</span> Ahmedabad</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:12" title="Reused: 12"></span></div></td>
+        <td class="num day1">100%</td>
+        <td class="num">100%</td>
+        <td><span class="pill ok">Approved</span></td>
+      </tr>
+      <tr>
+        <th scope="row"><span class="code">AUR</span> Aurora</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:10" title="Reused: 10"></span><span class="seg p-open" style="flex:2" title="Needs a decision: 2"></span></div></td>
+        <td class="num day1">83%</td>
+        <td class="num">83%</td>
+        <td><span class="pill todo">2 open</span></td>
+      </tr>
+      <tr>
+        <th scope="row"><span class="code">GRG</span> Grangemouth</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:11" title="Reused: 11"></span><span class="seg p-human" style="flex:1" title="Human decision: 1"></span></div></td>
+        <td class="num day1">92%</td>
+        <td class="num">92%</td>
+        <td><span class="pill ok">Approved</span></td>
+      </tr>
+      <tr>
+        <th scope="row"><span class="code">LXG</span> Lexington</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:11" title="Reused: 11"></span><span class="seg p-human" style="flex:1" title="Human decision: 1"></span></div></td>
+        <td class="num day1">0%</td>
+        <td class="num">92%</td>
+        <td><span class="pill ok">Approved</span></td>
+      </tr>
+      <tr>
+        <th scope="row"><span class="code">MUM</span> Mumbai</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:12" title="Reused: 12"></span></div></td>
+        <td class="num day1">100%</td>
+        <td class="num">100%</td>
+        <td><span class="pill ok">Approved</span></td>
+      </tr>
+      <tr>
+        <th scope="row"><span class="code">TUR</span> Turbhe</th>
+        <td class="barcell"><div class="bar"><span class="seg p-library" style="flex:12" title="Reused: 12"></span></div></td>
+        <td class="num day1">50%</td>
+        <td class="num">100%</td>
+        <td><span class="pill todo">1 open</span></td>
+      </tr></tbody></table></div>
+  </section>
+
+  <section class="section">
+    <h2>Where each field comes from</h2>
+    <p>Rows are the CRM order fields. Each cell shows the source column at that site, plus any site-only rule.</p>
+    <div class="scroll"><table class="matrix"><thead><tr><th scope="col">CRM field</th><th scope="col"><span class="code">AHM</span></th><th scope="col"><span class="code">AUR</span></th><th scope="col"><span class="code">GRG</span></th><th scope="col"><span class="code">LXG</span></th><th scope="col"><span class="code">MUM</span></th><th scope="col"><span class="code">TUR</span></th></tr></thead><tbody><tr><th scope="row"><span class="fname">order_id</span><span class="fdesc">ERP sales order number (CRM external id)</span></th><td class="cell p-library" title="Reused"><span class="src">Sales Document</span></td><td class="cell p-library" title="Reused"><span class="src">VBELN</span></td><td class="cell p-library" title="Reused"><span class="src">VBELN</span></td><td class="cell p-library" title="Reused"><span class="src">Order Number</span></td><td class="cell p-library" title="Reused"><span class="src">VBELN</span></td><td class="cell p-library" title="Reused"><span class="src">Order Number</span></td></tr><tr><th scope="row"><span class="fname">customer_id</span><span class="fdesc">Sold-to customer number</span></th><td class="cell p-library" title="Reused"><span class="src">Sold-To Party</span></td><td class="cell p-library" title="Reused"><span class="src">KUNNR</span></td><td class="cell p-library" title="Reused"><span class="src">KUNNR</span></td><td class="cell p-library" title="Reused"><span class="src">Bill-To Party</span></td><td class="cell p-library" title="Reused"><span class="src">KUNNR</span></td><td class="cell p-library" title="Reused"><span class="src">Bill-To Party</span></td></tr><tr><th scope="row"><span class="fname">customer_name</span><span class="fdesc">Customer name</span></th><td class="cell p-library" title="Reused"><span class="src">Customer</span></td><td class="cell p-library" title="Reused"><span class="src">NAME1</span></td><td class="cell p-library" title="Reused"><span class="src">NAME1</span></td><td class="cell p-library" title="Reused"><span class="src">Customer Name</span></td><td class="cell p-library" title="Reused"><span class="src">NAME1</span></td><td class="cell p-library" title="Reused"><span class="src">Customer</span></td></tr><tr><th scope="row"><span class="fname">order_date</span><span class="fdesc">Order creation date, ISO 8601</span></th><td class="cell p-library" title="Reused"><span class="src">Created On</span><span class="note">d.m.Y</span></td><td class="cell p-open" title="Needs a decision"><span class="src">ERDAT</span></td><td class="cell p-library" title="Reused"><span class="src">ERDAT</span><span class="note">d/m/Y</span></td><td class="cell p-library" title="Reused"><span class="src">Order Date</span><span class="note">m/d/Y</span></td><td class="cell p-library" title="Reused"><span class="src">ERDAT</span><span class="note">Ymd</span></td><td class="cell p-library" title="Reused"><span class="src">Created On</span><span class="note">d.m.Y</span></td></tr><tr><th scope="row"><span class="fname">material_id</span><span class="fdesc">Product number, no leading zeros</span></th><td class="cell p-library" title="Reused"><span class="src">Material</span></td><td class="cell p-library" title="Reused"><span class="src">MATNR</span></td><td class="cell p-library" title="Reused"><span class="src">MATNR</span></td><td class="cell p-library" title="Reused"><span class="src">Item</span></td><td class="cell p-library" title="Reused"><span class="src">MATNR</span></td><td class="cell p-library" title="Reused"><span class="src">Item</span></td></tr><tr><th scope="row"><span class="fname">quantity</span><span class="fdesc">Ordered quantity in the unit below</span></th><td class="cell p-library" title="Reused"><span class="src">Order Quantity</span></td><td class="cell p-library" title="Reused"><span class="src">KWMENG</span></td><td class="cell p-library" title="Reused"><span class="src">KWMENG</span></td><td class="cell p-library" title="Reused"><span class="src">Qty</span></td><td class="cell p-library" title="Reused"><span class="src">KWMENG</span></td><td class="cell p-library" title="Reused"><span class="src">Qty</span></td></tr><tr><th scope="row"><span class="fname">unit</span><span class="fdesc">Sales unit; converted to EACH for the CRM</span></th><td class="cell p-library" title="Reused"><span class="src">Sales Unit</span></td><td class="cell p-library" title="Reused"><span class="src">VRKME</span></td><td class="cell p-library" title="Reused"><span class="src">VRKME</span></td><td class="cell p-human" title="Human decision"><span class="src">Unit</span><span class="note">BOX=12</span></td><td class="cell p-library" title="Reused"><span class="src">VRKME</span></td><td class="cell p-library" title="Reused"><span class="src">Sales Unit</span></td></tr><tr><th scope="row"><span class="fname">net_amount</span><span class="fdesc">Net order value, excluding tax</span></th><td class="cell p-library" title="Reused"><span class="src">Net Value</span></td><td class="cell p-library" title="Reused"><span class="src">NETWR</span></td><td class="cell p-human" title="Human decision"><span class="src">NETWR</span><span class="note">÷ 1.2</span></td><td class="cell p-library" title="Reused"><span class="src">Amount</span></td><td class="cell p-library" title="Reused"><span class="src">NETWR</span></td><td class="cell p-library" title="Reused"><span class="src">Net Value</span></td></tr><tr><th scope="row"><span class="fname">currency</span><span class="fdesc">ISO 4217 currency code</span></th><td class="cell p-library" title="Reused"><span class="src">Document Currency</span></td><td class="cell p-library" title="Reused"><span class="src">WAERK</span></td><td class="cell p-library" title="Reused"><span class="src">WAERK</span></td><td class="cell p-library" title="Reused"><span class="src">Currency</span></td><td class="cell p-library" title="Reused"><span class="src">WAERK</span></td><td class="cell p-library" title="Reused"><span class="src">Document Currency</span></td></tr><tr><th scope="row"><span class="fname">plant</span><span class="fdesc">Shipping plant / site code</span></th><td class="cell p-library" title="Reused"><span class="src">Plant</span></td><td class="cell p-library" title="Reused"><span class="src">WERKS</span></td><td class="cell p-library" title="Reused"><span class="src">WERKS</span></td><td class="cell p-library" title="Reused"><span class="src">Site</span></td><td class="cell p-library" title="Reused"><span class="src">WERKS</span></td><td class="cell p-library" title="Reused"><span class="src">Plant</span></td></tr><tr><th scope="row"><span class="fname">status</span><span class="fdesc">OPEN, IN_PROGRESS, COMPLETE or CANCELLED</span></th><td class="cell p-library" title="Reused"><span class="src">Overall Status</span></td><td class="cell p-open" title="Needs a decision"><span class="src">GBSTK</span></td><td class="cell p-library" title="Reused"><span class="src">GBSTK</span></td><td class="cell p-library" title="Reused"><span class="src">Status</span></td><td class="cell p-library" title="Reused"><span class="src">GBSTK</span></td><td class="cell p-library" title="Reused"><span class="src">Status</span></td></tr><tr><th scope="row"><span class="fname">batch</span><span class="fdesc">Batch / lot number (GxP traceability)</span></th><td class="cell p-library" title="Reused"><span class="src">Batch</span></td><td class="cell p-library" title="Reused"><span class="src">CHARG</span></td><td class="cell p-library" title="Reused"><span class="src">CHARG</span></td><td class="cell p-library" title="Reused"><span class="src">Lot</span></td><td class="cell p-library" title="Reused"><span class="src">CHARG</span></td><td class="cell p-library" title="Reused"><span class="src">Lot</span></td></tr></tbody></table></div>
+    <h2>Custom columns</h2>
+    <ul class="extra"><li><span class="code">GRG</span> <code>ZZGXP_REL</code> carried as zzgxprel__c</li><li><span class="code">GRG</span> <code>ZZLEGACY_KUNNR</code> dropped</li><li><span class="code">TUR</span> <code>ZZCOLD_CHAIN</code> needs a decision</li></ul>
+  </section>
+
+  <section class="section">
+    <h2>Decision log</h2>
+    <p>Open questions first. Only options the engine offered can be chosen, and every decision carries a name.</p>
+    <div class="flags">
+      <article class="flag open">
+        <header><span class="code">TUR</span><h3>Column &#x27;ZZCOLD_CHAIN&#x27; has no home in the CRM order</h3><span class="kind">custom</span></header>
+        <p class="evidence">2 distinct values, sample: AMBIENT, 2-8C. Name suggests a quality or GxP field.</p>
+        <p class="decided pending">Waiting for a person. Suggested: sync as custom field zzcoldchain__c</p>
+      </article>
+      <article class="flag open">
+        <header><span class="code">AUR</span><h3>4 status codes nobody has mapped before</h3><span class="kind">status</span></header>
+        <p class="evidence">Codes and row counts: 10 (5), 20 (6), 30 (26), 90 (3)</p>
+        <p class="decided pending">Waiting for a person. Suggested: map each code to one of OPEN, IN_PROGRESS, COMPLETE, CANCELLED</p>
+      </article>
+      <article class="flag open">
+        <header><span class="code">AUR</span><h3>Day and month order is ambiguous</h3><span class="kind">date</span></header>
+        <p class="evidence">Every value parses as %d/%m/%Y and as %m/%d/%Y (no day above 12 in 40 rows). Sample: 03/07/2026, 05/07/2026, 06/07/2026</p>
+        <p class="decided pending">Waiting for a person. No suggestion: the data cannot tell.</p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">GRG</span><h3>Prices run 20% above every other site</h3><span class="kind">price</span></header>
+        <p class="evidence">Same products, per-EACH price in USD, median over 8 products: 1.20x the other sites. Common causes: amount includes tax, or a different price basis. FX rates are a planning assumption.</p>
+        <p class="decided"><b>divide amounts by 1.20 (amount includes tax)</b><span class="who">Approved by Tanisha John</span></p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">GRG</span><h3>Column &#x27;ZZGXP_REL&#x27; has no home in the CRM order</h3><span class="kind">custom</span></header>
+        <p class="evidence">2 distinct values, sample: Y, N. Name suggests a quality or GxP field.</p>
+        <p class="decided"><b>sync as custom field zzgxprel__c</b><span class="who">Approved by Tanisha John</span></p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">GRG</span><h3>Column &#x27;ZZLEGACY_KUNNR&#x27; has no home in the CRM order</h3><span class="kind">custom</span></header>
+        <p class="evidence">40 distinct values, sample: L19681, L55293, L93746.</p>
+        <p class="decided"><b>do not sync</b><span class="who">Approved by Tanisha John</span></p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">LXG</span><h3>7 columns matched on their data, not their names</h3><span class="kind">match</span></header>
+        <p class="evidence">&#x27;Amount&#x27; -&gt; net_amount (name 36%, data 100%, next best 0.00; sample 2230.92, 3643.40); &#x27;Item&#x27; -&gt; material_id (name 33%, data 100%, next best 0.47; sample 000000000000001007, 000000000000001006); &#x27;Order Number&#x27; -&gt; order_id (name 33%, data 100%, next best 0.76; sample 4565679047, 4559686067); &#x27;Site&#x27; -&gt; plant (name 22%, data 100%, next best 0.55; sample US01); &#x27;Qty&#x27; -&gt; quantity (name 38%, data 90%, next best 0.00; sample 178, 306); &#x27;Lot&#x27; -&gt; batch (name 25%, data 90%, next best 0.00; sample B2607730, B2607341); &#x27;Status&#x27; -&gt; status (name 63%, data 60%, next best 0.00; sample OPEN, SHPD)</p>
+        <p class="decided"><b>accept every proposed match</b><span class="who">Approved by Tanisha John</span></p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">LXG</span><h3>4 status codes nobody has mapped before</h3><span class="kind">status</span></header>
+        <p class="evidence">Codes and row counts: CANC (3), INV (18), OPEN (9), SHPD (10)</p>
+        <p class="decided"><b>map each code to one of OPEN, IN_PROGRESS, COMPLETE, CANCELLED</b> <span class="muted">(OPEN → OPEN, SHPD → IN_PROGRESS, INV → COMPLETE, CANC → CANCELLED)</span><span class="who">Approved by Tanisha John</span></p>
+      </article>
+      <article class="flag done">
+        <header><span class="code">LXG</span><h3>A BOX here looks like 12 units, not 10</h3><span class="kind">uom</span></header>
+        <p class="evidence">Across 6 products, the price of one BOX is 11.91x the price of one EACH. The library assumes 10.</p>
+        <p class="decided"><b>use BOX = 12 EACH for this site</b><span class="who">Approved by Tanisha John</span></p>
+      </article></div>
+  </section>
+
+  <section class="section">
+    <h2>What the library learned</h2>
+    <ul class="learned"><li><span class="code">GRG</span> approved by Tanisha John: library learned nothing new to share; kept 1 rule site-only.</li><li><span class="code">LXG</span> approved by Tanisha John: library learned 12 column names, 4 status codes; kept 1 rule site-only.</li><li><span class="code">MUM</span> approved by Tanisha John: library learned nothing new to share.</li><li><span class="code">AHM</span> approved by Tanisha John: library learned nothing new to share.</li></ul>
+  </section>
+
+  <footer>Generated Oct 13, 2026 18:44. Synthetic data for a fictional pharma company. FX rates are planning assumptions, used only for cross-site price checks.</footer>
+</div>

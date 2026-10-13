@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baseline-mcp"
+version = "0.1.0"
+description = "Map many setups of one ERP to one CRM order schema. MCP server for Claude Desktop."
+requires-python = ">=3.10"
+dependencies = ["mcp>=1.9,<2"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+baseline-mcp = "baseline.server:main"
+
+[tool.setuptools]
+packages = ["baseline"]
+
+[tool.setuptools.package-data]
+baseline = ["data/sites/*.csv"]
